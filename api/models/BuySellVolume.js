@@ -10,10 +10,13 @@ module.exports = {
     email:{
       type: 'email'
     },
-    buyRate: {
-      type: 'float'
+    volume:{
+      type:'float'
     },
-    sellRate:{
+     buyRate:{
+      type:'float'
+    },
+     sellRate:{
       type:'float'
     },
     currencyType:{

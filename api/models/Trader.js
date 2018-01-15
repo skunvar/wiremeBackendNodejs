@@ -29,9 +29,15 @@ module.exports = {
     traderId: {
       type: 'string'
     },
-    volume:{
-      type:'float'
-    },
+    // volume:{
+    //   type:'float'
+    // },
+    //  buyRate:{
+    //   type:'float'
+    // },
+    //  sellRate:{
+    //   type:'float'
+    // },
     profileImagePath: {
       type: 'string'
     },

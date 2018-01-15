@@ -226,6 +226,7 @@ module.exports = {
             if (error) {
               return res.json({
                 "message": "Try after some time!!!",
+                error : error,
                 statusCode: 400
               });
             } else {

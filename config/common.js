@@ -5,4 +5,8 @@ module.exports.common = {
   supportEmailIdpass: 'bitwire@io', //Support Email Id passoword
   supportEmailIdService: 'gmail',
 
+  currency : [
+  {id: 1, value : 'BTC'},
+  {id : 2,value :'INR'}]
+
 }

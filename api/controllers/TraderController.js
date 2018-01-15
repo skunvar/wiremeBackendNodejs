@@ -26,6 +26,10 @@ module.exports = {
     })
   },
 
+  getCurrencies : function (req, res){
+    return res.json({data : sails.config.common.currency, statusCode: 200})
+  },
+
   createNewTrader: function (req, res) {
     console.log("Enter into createNewTrader :: " + req.body.email);
     var traderfullName = req.body.fullName;
@@ -84,6 +88,15 @@ module.exports = {
             password: traderpassword,
             encryptedEmailVerificationOTP: encOtpForEmail
           }
+
+          var buySellVolumeObj ={
+            buyRate : 0,
+            sellRate : 0,
+            volume : 0,
+            email : traderemailaddress,
+            currencyType : 'BTC'
+          }
+
           var mailOptions = {
             from: sails.config.common.supportEmailId,
             to: traderemailaddress,
@@ -240,6 +253,22 @@ module.exports = {
                       statusCode: 400
                     });
                   }
+
+                  BuySellVolume.create(buySellVolumeObj).exec(function(err,data){
+                        if(err){
+                            return res.json({
+                            "message": "Error to entering in buySellUpdate",
+                            statusCode: 400
+                          });
+                        }
+                        else{
+                            return res.json({
+                              "message": "Save buySellUpdate",
+                              statusCode: 200
+                            });
+                        }
+                    });
+
                   console.log("Trader Create Succesfully...........");
                   return res.json({
                     "message": "We sent OTP on your email address please verify email!!!",
@@ -593,6 +622,13 @@ module.exports = {
 
 
   buySellUpdate: function (req, res) {
+    // if(req.isSocket){
+    //   console.log('socket has been connected'+req.isSocket+req.body.currencyType);
+    //    return res.json({
+    //     "message": "Socket Connected",
+    //     statusCode: 200
+    //   });
+    // }
     console.log('in buysellupdate action');
     const email = req.body.email;
     const buyRate = req.body.buyRate;
@@ -617,8 +653,9 @@ module.exports = {
       })
 
     if (volume) {
-      console.log('in volume block')
-      Trader.update({email: email}, {volume: volume}).exec(function (err, record) {
+      console.log('in volume block'+buyRate)
+      Trader.update({email: email}, {volume: volume})
+      .exec(function (err, TraderRecord) {
         if (err){
           console.log('error is here', err);
           return res.json({
@@ -627,25 +664,69 @@ module.exports = {
           })
         }
 
-        console.log('volume has been updated', email);
+        // console.log('volume has been updated', email);
           if (buyRate && sellRate) {
-            BuySellVolume.update({email: email, currencyType: currencyType}, {
-              buyRate: buyRate,
-              sellRate: sellRate
-            }).exec(function (err, record) {
-              if (err){
-                console.log('error is here', err)
-                return res.json({
-                  "message": "Failed to update buyRate and sellRate",
-                  statusCode: 400
-                })
-              }
 
-              res.json({
-                "message": "Successfully updated",
-                statusCode: 200
-              })
-            })
+                BuySellVolume.findOne({email : email , currencyType : currencyType})
+                .exec(function(error,data){
+                  if(data){
+                        BuySellVolume.update({email: email, currencyType: currencyType}, {
+                        buyRate: buyRate,
+                        sellRate: sellRate,
+                        volume : volume
+                      }).exec(function (err, record) {
+                        if (err){
+                          console.log('error is here', err)
+                          return res.json({
+                            "message": "Failed to update buyRate and sellRate",
+                            statusCode: 400
+                          })
+                        }
+                        
+                        sails.sockets.blast('updatedTrades', {
+                          message:'Successfully updated buy and sell',
+                          statusCode :200,
+                          data : record
+                        });
+
+                        res.json({
+                          "message": "Successfully updated buy and sell",
+                          statusCode: 200
+                        })
+                      });
+                  }
+                  else{
+                    var buySellUpdateNewCuurencyObj = {
+                      buyRate: buyRate,
+                      sellRate: sellRate,
+                      email: email,
+                      volume: volume,
+                      currencyType: currencyType
+                    }
+
+                    BuySellVolume.create(buySellUpdateNewCuurencyObj).exec(function(err, data){
+                      if(err){
+
+                      }
+                      else{
+
+                        sails.sockets.blast('updatedTrades', {
+                          message:'Successfully updated buy and sell',
+                          statusCode :200,
+                          data : data
+                        });
+
+                        return res.json({
+                          "message": "Successfully updated buy and sell on new Currency",
+                          statusCode: 200
+                        })
+                      }
+                    });
+                  }
+
+                });
+
+                
           }
           else if (buyRate) {
             BuySellVolume.update({
@@ -657,8 +738,15 @@ module.exports = {
                   "message": "Failed to update buyRate",
                   statusCode: 400
                 })
+
+              sails.sockets.blast('updatedTrades', {
+                message:'message has been sent',
+                statusCode :200,
+                data : record
+              });
+
               res.json({
-                "message": "Successfully updated",
+                "message": "Successfully updated buy",
                 statusCode: 200
               })
             })
@@ -675,8 +763,14 @@ module.exports = {
                   statusCode: 400
                 })
 
+              sails.sockets.blast('updatedTrades', {
+                message:'message has been sent',
+                statusCode :200,
+                data : record
+              });
+
               res.json({
-                "message": "Successfully updated",
+                "message": "Successfully updated sell",
                 statusCode: 200
               })
 
@@ -701,6 +795,11 @@ module.exports = {
               })
             }
 
+            sails.sockets.blast('updatedTrades', {
+                          message:'Successfully updated buy and sell',
+                          statusCode :200,
+                          data : record
+                        });
             res.json({
               "message": "Successfully updated",
               statusCode: 200
@@ -717,6 +816,13 @@ module.exports = {
                 "message": "Failed to update buyRate",
                 statusCode: 400
               })
+
+            sails.sockets.blast('updatedTrades', {
+                          message:'Successfully updated buy',
+                          statusCode :200,
+                          data : record
+                        });
+
             res.json({
               "message": "Successfully updated",
               statusCode: 200
@@ -734,6 +840,12 @@ module.exports = {
                 "message": "Failed to update sellRate",
                 statusCode: 400
               })
+            
+            sails.sockets.blast('updatedTrades', {
+                          message:'Successfully updated sell',
+                          statusCode :200,
+                          data : record
+                        });
 
             res.json({
               "message": "Successfully updated",
@@ -804,34 +916,52 @@ module.exports = {
 
   getTraderInfo : function (req,res) {
     const email = req.body.email;
-    const currency = req.body.currency;
+    const currency = req.body.currencyType;
+    console.log('currencyType::'+req.body.currencyType);
 
-    Trader.findOne({email:email}).exec(function (err, record) {
-      if(err)
-        return res.json({
-          message:'failed to load trader data',
-          statusCode:400
-        })
-      var data = {
-        volume:record.volume
-      }
-      BuySellVolume.findOne({email:email, currencyType:currency}).exec(function (err, record) {
-        if(err)
+    BuySellVolume.find({email:email}).exec(function (err, record) {
+        if(err){
           return res.json({
             message:'failed to load trader data',
             statusCode: 400
           })
-
-        data.sellRate = record.sellRate;
-        data.buyRate = record.buyRate;
-
+        }
+        else{
+          console.log('Inside data found');
         return res.json({
           message:'success',
           statusCode: 200,
-          data: data
+          data: record
         });
+       }
       })
-    })
+
+    // Trader.findOne({email:email}).exec(function (err, record) {
+    //   if(err)
+    //     return res.json({
+    //       message:'failed to load trader data',
+    //       statusCode:400
+    //     })
+    //   var data = {
+    //     volume:record.volume
+    //   }
+    //   BuySellVolume.findOne({email:email, currencyType:currency}).exec(function (err, record) {
+    //     if(err)
+    //       return res.json({
+    //         message:'failed to load trader data',
+    //         statusCode: 400
+    //       })
+
+    //     data.sellRate = record.sellRate;
+    //     data.buyRate = record.buyRate;
+
+    //     return res.json({
+    //       message:'success',
+    //       statusCode: 200,
+    //       data: data
+    //     });
+    //   })
+    // })
   },
 
   getTradersByLocation : function(req, res){
