@@ -974,6 +974,92 @@ module.exports = {
     });
   },
 
+  updateCurrentPassword: function(req, res, next) {
+    console.log("Enter into updateCurrentPassword");
+    var userMailId = req.body.userMailId;
+    var currentPassword = req.body.currentPassword;
+    var newPassword = req.body.newPassword;
+    var confirmNewPassword = req.body.confirmNewPassword;
+    if (!userMailId || !currentPassword || !newPassword || !confirmNewPassword) {
+      console.log("Invalid Parameter by user.....");
+      return res.json({
+        "message": "Invalid Parameter",
+        statusCode: 401
+      });
+    }
+    if (currentPassword == newPassword) {
+      console.log("Invalid Parameter by user.....");
+      return res.json({
+        "message": "Current password is not same as newPassword",
+        statusCode: 401
+      });
+    }
+    if (newPassword != confirmNewPassword) {
+      console.log("Invalid Parameter by user.....");
+      return res.json({
+        "message": "New Password and Confirm New Password not match",
+        statusCode: 401
+      });
+    }
+    Trader.findOne({
+      email: userMailId
+    }).exec(function(err, user) {
+      if (err) {
+        return res.json({
+          "message": "Error to find user",
+          statusCode: 401
+        });
+      }
+      if (!user) {
+        return res.json({
+          "message": "Invalid email!",
+          statusCode: 401
+        });
+      }
+      Trader.comparePassword(currentPassword, user, function(err, valid) {
+        if (err) {
+          console.log("Error to compare password");
+          return res.json({
+            "message": "Error to compare password",
+            statusCode: 401
+          });
+        }
+        if (!valid) {
+          return res.json({
+            "message": "Please enter correct currentPassword",
+            statusCode: 401
+          });
+        } else {
+          bcrypt.hash(confirmNewPassword, 10, function(err, hash) {
+            if (err) res.json({
+              "message": "Errot to bcrypt passoword",
+              statusCode: 401
+            });
+            var newEncryptedPass = hash;
+            Trader.update({
+                email: userMailId
+              }, {
+                encryptedPassword: newEncryptedPass
+              })
+              .exec(function(err, updatedUser) {
+                if (err) {
+                  return res.json({
+                    "message": "Error to update passoword!",
+                    statusCode: 401
+                  });
+                }
+                console.log("Update current passoword succesfully!!!");
+                return res.json({
+                  "message": "Your passoword updated succesfully",
+                  statusCode: 200
+                });
+              });
+          });
+        }
+      });
+
+    });
+  },
 
   sentOtpToEmailVerificatation: function(req, res, next) { 
     console.log("Enter into sentOtpToEmailVerificatation");

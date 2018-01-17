@@ -121,23 +121,34 @@ module.exports = {
     const senderId = req.body.sender;
     const recipientId = req.body.recipient;
 
-    Chat.create({
-      "sender": senderId,
-      "recipient": recipientId
-    }).exec(function(err, record) {
-      if (err)
+    Chat.findOne({sender : senderId , recipient : recipientId}).exec(function(err, data){
+      if(data){
+        console.log('You have requested to '+recipientId);
         return res.json({
-          message: 'failed to create chat record',
-          error: err,
-          statusCode: 400
-        })
-      return res.json({
-        message: 'chat has been created',
-        statusCode: 200,
-        data:record
-      })
-
+              message: 'You have requested to '+recipientId,
+              statusCode: 400
+            })
+      }
+      else{
+            Chat.create({
+            "sender": senderId,
+            "recipient": recipientId
+          }).exec(function(err, record) {
+            if (err)
+              return res.json({
+                message: 'failed to create chat record',
+                error: err,
+                statusCode: 400
+              })
+            return res.json({
+              message: 'chat has been created',
+              statusCode: 200,
+              data:record
+            })
+          });
+      }
     })
+    
   },
 
 
@@ -220,11 +231,6 @@ module.exports = {
         return res.json({message:'failed to retrieve user list', statusCode:400});
       }
 
-      // var mappedFriends = record.map(function (t) {
-      //   if(t.sender==userId)
-      //     return {email:t.recipient, chatId:t.chatId,isAccepted:t.isAccepted};
-      //   else return {email:t.sender, chatId:t.chatId,isAccepted:t.isAccepted};
-      // });
       else{
          return res.json({message:'FriendsList retrieved Successfully', statusCode:200, data:record});
       }
